@@ -1,1 +1,1 @@
-/* cache-busted production marker: 20260902-3 */
+const selectedProjectImage = null;
