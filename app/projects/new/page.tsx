@@ -1,0 +1,10 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function NewProjectPage() {
+  const router = useRouter(); const [name,setName]=useState(""); const [description,setDescription]=useState(""); const [fungsi,setFungsi]=useState(""); const [photoUrl,setPhotoUrl]=useState(""); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
+  async function handleSubmit(e: React.FormEvent) { e.preventDefault(); setError(""); setLoading(true); const res=await fetch("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description,function:fungsi,photoUrl})}); setLoading(false); if(!res.ok){const data=await res.json();setError(data.error||"Gagal menambahkan projek");return;} router.push("/");router.refresh(); }
+  return (<div className="auth-wrap"><div className="auth-card" style={{maxWidth:480}}><div className="auth-title">Tambah Projek Baru</div><div className="auth-sub">Isi detail projek yang ingin kamu tampilkan</div>{error&&<div className="error-box">{error}</div>}<form onSubmit={handleSubmit}><div className="field"><label>Nama Projek</label><input type="text" required value={name} onChange={e=>setName(e.target.value)} placeholder="Contoh: Aplikasi Manajemen Tugas"/></div><div className="field"><label>URL Foto Projek (opsional)</label><input type="url" value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder="https://..."/></div><div className="field"><label>Deskripsi</label><textarea required rows={3} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Jelaskan singkat tentang projek ini"/></div><div className="field"><label>Fungsi</label><input type="text" required value={fungsi} onChange={e=>setFungsi(e.target.value)} placeholder="Contoh: Mengelola to-do list tim"/></div><button type="submit" className="btn btn-primary" disabled={loading}>{loading?"Menyimpan...":"Simpan Projek"}</button></form></div></div>);
+}
