@@ -1,75 +1,11 @@
 require('dotenv').config();
-const path = require('path');
-const express = require('express');
-const session = require('express-session');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
-
-const app = express();
-const port = process.env.PORT || 3000;
-const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }) : null;
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(session({ secret: process.env.SESSION_SECRET || 'change-me', resave: false, saveUninitialized: false, cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 24 * 7 } }));
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(express.static(path.join(__dirname, 'public')));
-
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => { try { if (!pool) return done(null, null); const { rows } = await pool.query('SELECT id, username, email, avatar_url FROM users WHERE id=$1', [id]); done(null, rows[0] || null); } catch (e) { done(e); } });
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
-  passport.use(new GoogleStrategy({ clientID: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, callbackURL: process.env.GOOGLE_CALLBACK_URL }, async (_accessToken, _refreshToken, profile, done) => {
-    try {
-      if (!pool) return done(new Error('DATABASE_URL is not configured'));
-      const email = profile.emails?.[0]?.value;
-      const usernameBase = (profile.displayName || email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || 'user';
-      const existing = await pool.query('SELECT id, username, email, avatar_url FROM users WHERE google_id=$1 OR email=$2 LIMIT 1', [profile.id, email]);
-      if (existing.rows[0]) {
-        const updated = await pool.query('UPDATE users SET google_id=$1, avatar_url=$2 WHERE id=$3 RETURNING id, username, email, avatar_url', [profile.id, profile.photos?.[0]?.value || null, existing.rows[0].id]);
-        return done(null, updated.rows[0]);
-      }
-      let username = usernameBase;
-      for (let i = 1; ; i++) { const check = await pool.query('SELECT 1 FROM users WHERE username=$1', [username]); if (!check.rows[0]) break; username = `${usernameBase}${i}`; }
-      const created = await pool.query('INSERT INTO users(username,email,google_id,avatar_url) VALUES($1,$2,$3,$4) RETURNING id, username, email, avatar_url', [username, email, profile.id, profile.photos?.[0]?.value || null]);
-      done(null, created.rows[0]);
-    } catch (e) { done(e); }
-  }));
-}
-
-const requireDb = (req, res, next) => pool ? next() : res.status(503).json({ error: 'Database is not configured. Set DATABASE_URL.' });
-const requireAuth = (req, res, next) => req.isAuthenticated() ? next() : res.status(401).json({ error: 'Authentication required.' });
-
-app.get('/auth/google', (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID) return res.status(503).send('Google OAuth is not configured.');
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-});
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/?auth=failed' }), (_req, res) => res.redirect('/'));
-app.post('/api/auth/register', requireDb, async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password || password.length < 8) return res.status(400).json({ error: 'Username, email, and an 8+ character password are required.' });
-    const hash = await bcrypt.hash(password, 12);
-    const { rows } = await pool.query('INSERT INTO users(username,email,password_hash) VALUES($1,$2,$3) RETURNING id,username,email,avatar_url', [username.trim(), email.trim().toLowerCase(), hash]);
-    req.login(rows[0], err => err ? res.status(500).json({ error: 'Could not start session.' }) : res.json({ user: rows[0] }));
-  } catch (e) { res.status(e.code === '23505' ? 409 : 500).json({ error: e.code === '23505' ? 'Username or email already exists.' : 'Registration failed.' }); }
-});
-app.post('/api/auth/login', requireDb, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const { rows } = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [email?.trim().toLowerCase()]);
-    if (!rows[0] || !rows[0].password_hash || !(await bcrypt.compare(password || '', rows[0].password_hash))) return res.status(401).json({ error: 'Invalid credentials.' });
-    const user = { id: rows[0].id, username: rows[0].username, email: rows[0].email, avatar_url: rows[0].avatar_url };
-    req.login(user, err => err ? res.status(500).json({ error: 'Could not start session.' }) : res.json({ user }));
-  } catch (_) { res.status(500).json({ error: 'Login failed.' }); }
-});
-app.post('/api/auth/logout', (req, res) => req.logout(() => res.json({ ok: true })));
-app.get('/api/me', (req, res) => res.json({ user: req.user || null }));
-app.get('/api/projects', requireDb, async (_req, res) => { try { const { rows } = await pool.query('SELECT id,name,slug,description,function_text,image_url,tags FROM projects ORDER BY created_at DESC'); res.json({ projects: rows }); } catch (_) { res.status(500).json({ error: 'Could not load projects.' }); } });
-app.patch('/api/me', requireDb, requireAuth, async (req, res) => { try { const username = String(req.body.username || '').trim(); if (!username) return res.status(400).json({ error: 'Username is required.' }); const { rows } = await pool.query('UPDATE users SET username=$1 WHERE id=$2 RETURNING id,username,email,avatar_url', [username, req.user.id]); res.json({ user: rows[0] }); } catch (e) { res.status(e.code === '23505' ? 409 : 500).json({ error: 'Could not update profile.' }); } });
-
-app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.listen(port, () => console.log(`ProjectHub listening on ${port}`));
+const path=require('path');const express=require('express');const session=require('express-session');const passport=require('passport');const GoogleStrategy=require('passport-google-oauth20').Strategy;const bcrypt=require('bcryptjs');const{Pool}=require('pg');
+const app=express();const port=process.env.PORT||3000;const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
+app.use(express.json());app.use(express.urlencoded({extended:true}));app.use(session({secret:process.env.SESSION_SECRET||'change-me',resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:604800000}}));app.use(passport.initialize());app.use(passport.session());app.use(express.static(path.join(__dirname,'public')));
+passport.serializeUser((user,done)=>done(null,user.id));passport.deserializeUser(async(id,done)=>{try{if(!pool)return done(null,null);const{rows}=await pool.query('SELECT id,username,email,avatar_url FROM users WHERE id=$1',[id]);done(null,rows[0]||null)}catch(e){done(e)}});
+if(process.env.GOOGLE_CLIENT_ID&&process.env.GOOGLE_CLIENT_SECRET&&process.env.GOOGLE_CALLBACK_URL){passport.use(new GoogleStrategy({clientID:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET,callbackURL:process.env.GOOGLE_CALLBACK_URL},async(_a,_r,profile,done)=>{try{if(!pool)return done(new Error('DATABASE_URL is not configured'));const email=profile.emails?.[0]?.value;if(!email)return done(new Error('Google account has no email'));const base=(profile.displayName||email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,24)||'user';const existing=await pool.query('SELECT id FROM users WHERE google_id=$1 OR email=$2 LIMIT 1',[profile.id,email]);if(existing.rows[0]){const{rows}=await pool.query('UPDATE users SET google_id=$1,avatar_url=$2 WHERE id=$3 RETURNING id,username,email,avatar_url',[profile.id,profile.photos?.[0]?.value||null,existing.rows[0].id]);return done(null,rows[0])}let username=base;for(let i=1;;i++){const check=await pool.query('SELECT 1 FROM users WHERE username=$1',[username]);if(!check.rows[0])break;username=`${base}${i}`}const{rows}=await pool.query('INSERT INTO users(username,email,google_id,avatar_url) VALUES($1,$2,$3,$4) RETURNING id,username,email,avatar_url',[username,email,profile.id,profile.photos?.[0]?.value||null]);done(null,rows[0])}catch(e){done(e)}}))}
+const requireDb=(req,res,next)=>pool?next():res.status(503).json({error:'Database is not configured. Set DATABASE_URL.'});const requireAuth=(req,res,next)=>req.isAuthenticated()?next():res.status(401).json({error:'Authentication required.'});
+app.get('/auth/google',(req,res,next)=>{if(!process.env.GOOGLE_CLIENT_ID)return res.status(503).send('Google OAuth is not configured.');passport.authenticate('google',{scope:['profile','email']})(req,res,next)});app.get('/auth/google/callback',passport.authenticate('google',{failureRedirect:'/?auth=failed'}),(_req,res)=>res.redirect('/'));
+app.post('/api/auth/register',requireDb,async(req,res)=>{try{const{username,email,password}=req.body;if(!username||!email||!password||password.length<8)return res.status(400).json({error:'Username, email, and an 8+ character password are required.'});const hash=await bcrypt.hash(password,12);const{rows}=await pool.query('INSERT INTO users(username,email,password_hash) VALUES($1,$2,$3) RETURNING id,username,email,avatar_url',[username.trim(),email.trim().toLowerCase(),hash]);req.login(rows[0],err=>err?res.status(500).json({error:'Could not start session.'}):res.json({user:rows[0]}))}catch(e){res.status(e.code==='23505'?409:500).json({error:e.code==='23505'?'Username or email already exists.':'Registration failed.'})}});
+app.post('/api/auth/login',requireDb,async(req,res)=>{try{const{email,password}=req.body;const{rows}=await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1',[email?.trim().toLowerCase()]);if(!rows[0]||!rows[0].password_hash||!(await bcrypt.compare(password||'',rows[0].password_hash)))return res.status(401).json({error:'Invalid credentials.'});const user={id:rows[0].id,username:rows[0].username,email:rows[0].email,avatar_url:rows[0].avatar_url};req.login(user,err=>err?res.status(500).json({error:'Could not start session.'}):res.json({user}))}catch(_){res.status(500).json({error:'Login failed.'})}});app.post('/api/auth/logout',(req,res)=>req.logout(()=>res.json({ok:true})));app.get('/api/me',(req,res)=>res.json({user:req.user||null}));app.get('/api/projects',requireDb,async(_req,res)=>{try{const{rows}=await pool.query('SELECT id,name,slug,description,function_text,image_url,tags FROM projects ORDER BY created_at DESC');res.json({projects:rows})}catch(_){res.status(500).json({error:'Could not load projects.'})}});app.patch('/api/me',requireDb,requireAuth,async(req,res)=>{try{const username=String(req.body.username||'').trim();if(!username)return res.status(400).json({error:'Username is required.'});const{rows}=await pool.query('UPDATE users SET username=$1 WHERE id=$2 RETURNING id,username,email,avatar_url',[username,req.user.id]);res.json({user:rows[0]})}catch(e){res.status(e.code==='23505'?409:500).json({error:'Could not update profile.'})}});
+app.use((req,res,next)=>req.method==='GET'&&req.accepts('html')?res.sendFile(path.join(__dirname,'public','index.html')):next());app.use((req,res)=>res.status(404).json({error:'Not found'}));app.listen(port,()=>console.log(`ProjectHub listening on ${port}`));
