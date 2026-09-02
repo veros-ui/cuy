@@ -3,7 +3,7 @@
 
 [functions]
   directory = "netlify/functions"
-  external_node_modules = ["express"]
+  external_node_modules = ["express", "express-session"]
   node_bundler = "esbuild"
 
 [[headers]]
