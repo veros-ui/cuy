@@ -3,7 +3,7 @@
 
 [functions]
   directory = "netlify/functions"
-  external_node_modules = ["express", "express-session"]
+  external_node_modules = ["express", "express-session", "passport", "passport-google-oauth20", "pg", "bcryptjs", "serverless-http"]
   node_bundler = "esbuild"
 
 [[headers]]
@@ -13,6 +13,11 @@
 
 [[headers]]
   for = "/app.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/styles.css"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
