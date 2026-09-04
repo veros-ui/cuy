@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { prisma } from "../../../../lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-export async function DELETE(req:Request,{params}:{params:{id:string}}){const session=await getServerSession(authOptions);if(!session?.user?.id)return NextResponse.json({error:"Harus login"},{status:401});const project=await prisma.project.findUnique({where:{id:params.id}});if(!project||project.ownerId!==session.user.id)return NextResponse.json({error:"Tidak diizinkan"},{status:403});await prisma.project.delete({where:{id:params.id}});return NextResponse.json({success:true})}
+import { authOptions } from "../../../../lib/auth";
+import { NextResponse } from "next/server";
+export async function DELETE(_:Request,{params}:{params:{id:string}}){const s:any=await getServerSession(authOptions as any);if(s?.user?.role!=="ADMIN")return NextResponse.json({error:"Unauthorized"},{status:401});await prisma.project.delete({where:{id:params.id}});return NextResponse.json({ok:true});}
+export async function PATCH(req:Request,{params}:{params:{id:string}}){const s:any=await getServerSession(authOptions as any);if(s?.user?.role!=="ADMIN")return NextResponse.json({error:"Unauthorized"},{status:401});const b=await req.json();return NextResponse.json(await prisma.project.update({where:{id:params.id},data:b}));}

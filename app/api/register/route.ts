@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-export async function POST(req:Request){try{const{name,email,password}=await req.json();if(!name||!email||!password)return NextResponse.json({error:"Semua field wajib diisi"},{status:400});if(password.length<6)return NextResponse.json({error:"Password minimal 6 karakter"},{status:400});const existing=await prisma.user.findUnique({where:{email}});if(existing)return NextResponse.json({error:"Email sudah terdaftar"},{status:409});const hashed=await bcrypt.hash(password,10);const user=await prisma.user.create({data:{name,email,password:hashed,avatarUrl:"/avatars/avatar1.svg"}});return NextResponse.json({id:user.id,email:user.email},{status:201})}catch(err){console.error(err);return NextResponse.json({error:"Terjadi kesalahan server"},{status:500})}}
+import { prisma } from "../../../lib/prisma";
+import { NextResponse } from "next/server";
+export async function POST(req:Request){try{const b=await req.json();if(!b.username||!b.email||!b.password)return NextResponse.json({error:"Semua field wajib diisi"},{status:400});const email=b.email.toLowerCase();const exists=await prisma.user.findUnique({where:{email}});if(exists)return NextResponse.json({error:"Email sudah terdaftar"},{status:409});const user=await prisma.user.create({data:{name:b.username,email,password:await bcrypt.hash(b.password,12)}});return NextResponse.json({ok:true,user:{id:user.id,email:user.email}});}catch{return NextResponse.json({error:"Gagal membuat akun"},{status:500});}}
