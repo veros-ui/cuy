@@ -1,0 +1,2 @@
+import "./globals.css";import Providers from "@/components/Providers";import Nav from "@/components/Nav";
+export const metadata={title:"ProjectVault",description:"Marketplace for developer projects"};export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="id"><body><Providers><Nav/><main>{children}</main><footer>ProjectVault · Marketplace developer projects</footer></Providers></body></html>}

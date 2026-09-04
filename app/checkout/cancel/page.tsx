@@ -1,0 +1,1 @@
+export default function Cancel(){return <div className="panel"><h1>Checkout cancelled</h1><p>No payment was recorded.</p></div>}

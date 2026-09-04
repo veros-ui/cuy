@@ -1,0 +1,3 @@
+"use client";
+import Link from "next/link";import {useSession,signOut} from "next-auth/react";
+export default function Nav(){const {data}=useSession();return <header><Link href="/" className="brand">ProjectVault</Link><nav><Link href="/">Marketplace</Link>{data?.user?<><Link href="/dashboard">Dashboard</Link><Link href="/wishlist">Wishlist</Link><Link href="/profile">Profile</Link>{data.user.role==="ADMIN"&&<Link href="/admin">Admin</Link>}<button onClick={()=>signOut({callbackUrl:"/"})}>Logout</button></>:<><Link href="/login">Login</Link><Link className="btn" href="/register">Register</Link></>}</nav></header>}

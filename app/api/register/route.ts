@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+export async function POST(req:Request){try{const {username,email,password}=await req.json();if(!username||!email||!password||password.length<8)return NextResponse.json({error:"Username, email, dan password valid wajib diisi (password minimal 8 karakter)."},{status:400});const exists=await prisma.user.findFirst({where:{OR:[{email:email.toLowerCase()},{name:username}]}});if(exists)return NextResponse.json({error:"Username atau email sudah digunakan."},{status:409});const admins=(process.env.ADMIN_EMAILS||"").split(",").map(x=>x.trim().toLowerCase());const user=await prisma.user.create({data:{name:username,email:email.toLowerCase(),password:await bcrypt.hash(password,12),role:admins.includes(email.toLowerCase())?"ADMIN":"USER"}});return NextResponse.json({id:user.id});}catch{return NextResponse.json({error:"Registrasi gagal."},{status:500})}}

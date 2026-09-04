@@ -1,0 +1,1 @@
+export default function Success(){return <div className="panel"><h1>Checkout successful</h1><p>Payment is being verified by the Stripe webhook. Once the purchase is recorded, the premium download is available from your dashboard.</p></div>}

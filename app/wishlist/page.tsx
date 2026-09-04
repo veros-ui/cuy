@@ -1,0 +1,2 @@
+"use client";import {useEffect,useState} from "react";import Link from "next/link";
+export default function Wishlist(){const [d,setD]=useState<any[]>([]);useEffect(()=>{fetch("/api/dashboard").then(r=>r.json()).then(x=>setD(x.wishlist||[]))},[]);return <><h1>Wishlist</h1><div className="grid">{d.map(x=><Link className="card" href={`/projects/${x.project.id}`} key={x.id}><div className="cardbody"><span className="pill">{x.project.premium?"PREMIUM":"FREE"}</span><h3>{x.project.name}</h3><p className="muted">{x.project.description.slice(0,120)}</p></div></Link>)}</div></>}
