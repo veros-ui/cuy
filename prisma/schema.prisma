@@ -12,7 +12,9 @@ model User {
   name          String?
   email         String?    @unique
   emailVerified DateTime?
-  image         String?
+  image         String?    @db.Text
+  bio           String?    @db.Text
+  avatarBorder  String     @default("solid")
   password      String?
   role          String     @default("USER")
   premiumUntil  DateTime?
