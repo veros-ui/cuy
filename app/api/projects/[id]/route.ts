@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const p = await prisma.project.findUnique({ where: { id: params.id }, include: { owner: { select: { id: true, name: true, image: true, bio: true, avatarBorder: true, role: true } } } });
   if (!p) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  await prisma.project.update({ where: { id: p.id }, data: { views: { increment: 1 } });
+  await prisma.project.update({ where: { id: p.id }, data: { views: { increment: 1 } } });
   return NextResponse.json(p);
 }
 
