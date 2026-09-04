@@ -1,1 +1,0 @@
-export {GET} from "../../api/checkout/[id]/route";
