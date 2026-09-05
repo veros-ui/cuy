@@ -5,14 +5,14 @@ import {requireUser} from "@/lib/session";
 const EDITABLE_FIELDS=["name","description","category","tags","technology","license","requirements","installation","documentation","demoUrl","githubUrl","screenshots","coverUrl","downloadUrl","premium","price","featured","status","version","changelog"] as const;
 const ALLOWED_STATUS=new Set(["DRAFT","PUBLISHED","ARCHIVED"]);
 
-function buildUpdate(input:any){
- const d:any={};
+function buildUpdate(input:Record<string,unknown>){
+ const d:Record<string,unknown>={};
  for(const key of EDITABLE_FIELDS)if(Object.prototype.hasOwnProperty.call(input,key))d[key]=input[key];
- if(Object.prototype.hasOwnProperty.call(d,"name")){d.name=String(d.name||"").trim();if(!d.name)return {error:"Nama project wajib diisi."};if(d.name.length>160)return {error:"Nama project terlalu panjang."};}
- if(Object.prototype.hasOwnProperty.call(d,"description")){d.description=String(d.description||"").trim();if(!d.description)return {error:"Deskripsi wajib diisi."};if(d.description.length>20000)return {error:"Deskripsi terlalu panjang."};}
- if(Object.prototype.hasOwnProperty.call(d,"premium"))d.premium=Boolean(d.premium);
+ if(Object.prototype.hasOwnProperty.call(d,"name")){d.name=String(d.name||"").trim();if(!d.name)return {error:"Nama project wajib diisi."};if(String(d.name).length>160)return {error:"Nama project terlalu panjang."};}
+ if(Object.prototype.hasOwnProperty.call(d,"description")){d.description=String(d.description||"").trim();if(!d.description)return {error:"Deskripsi wajib diisi."};if(String(d.description).length>20000)return {error:"Deskripsi terlalu panjang."};}
+ if(Object.prototype.hasOwnProperty.call(d,"premium"))d.premium=d.premium===true||d.premium==="true"||d.premium===1||d.premium==="1";
  if(Object.prototype.hasOwnProperty.call(d,"price")){const price=Number(d.price);if(!Number.isInteger(price)||price<0)return {error:"Harga tidak valid."};d.price=price;}
- if(Object.prototype.hasOwnProperty.call(d,"status")){d.status=String(d.status);if(!ALLOWED_STATUS.has(d.status))return {error:"Status project tidak valid."};}
+ if(Object.prototype.hasOwnProperty.call(d,"status")){d.status=String(d.status);if(!ALLOWED_STATUS.has(String(d.status)))return {error:"Status project tidak valid."};}
  return {data:d};
 }
 
@@ -30,7 +30,9 @@ export async function PATCH(req:Request,{params}:{params:{id:string}}){
   const u=await requireUser();
   const p=await prisma.project.findUnique({where:{id:params.id},select:{id:true,ownerId:true}});
   if(!p||!(p.ownerId===u.id||u.role==="ADMIN"))return NextResponse.json({error:"Forbidden"},{status:403});
-  const result=buildUpdate(await req.json());
+  const body=await req.json();
+  if(!body||typeof body!=="object"||Array.isArray(body))return NextResponse.json({error:"Body tidak valid."},{status:400});
+  const result=buildUpdate(body as Record<string,unknown>);
   if("error" in result)return NextResponse.json({error:result.error},{status:400});
   if(!Object.keys(result.data).length)return NextResponse.json({error:"Tidak ada perubahan."},{status:400});
   const updated=await prisma.project.update({where:{id:p.id},data:result.data});
