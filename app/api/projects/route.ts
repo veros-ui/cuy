@@ -4,7 +4,7 @@ import {requireUser} from "@/lib/session";
 
 const publicProjectSelect={
  id:true,name:true,slug:true,description:true,category:true,tags:true,technology:true,license:true,requirements:true,installation:true,documentation:true,demoUrl:true,githubUrl:true,screenshots:true,coverUrl:true,premium:true,price:true,views:true,downloads:true,featured:true,status:true,version:true,changelog:true,ownerId:true,createdAt:true,updatedAt:true,
- owner:{select:{id:true,name:true,image:true,role:true}},
+ owner:{select:{id:true,name:true,image:true}},
  reviews:{select:{rating:true}}
 };
 
