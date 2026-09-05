@@ -1,4 +1,5 @@
 import {PrismaAdapter} from "@next-auth/prisma-adapter";
+import type {NextAuthOptions} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
@@ -7,9 +8,9 @@ import {prisma} from "./prisma";
 const envAdmins=()=>new Set((process.env.ADMIN_EMAILS||process.env.ADMIN_EMAIL||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean));
 const isAdminEmail=async(email:string)=>envAdmins().has(email.toLowerCase())||!!(await prisma.adminEmail.findUnique({where:{email:email.toLowerCase()}}));
 
-export const authOptions={
+export const authOptions:NextAuthOptions={
  adapter:PrismaAdapter(prisma),
- session:{strategy:"jwt" as const},
+ session:{strategy:"jwt"},
  providers:[
   CredentialsProvider({
    name:"Email",
