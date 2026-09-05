@@ -1,4 +1,5 @@
 import {NextResponse} from "next/server";
+import {Prisma} from "@prisma/client";
 import {prisma} from "@/lib/prisma";
 import {requireUser} from "@/lib/session";
 
@@ -14,7 +15,8 @@ export async function PATCH(req:Request){
  try{
   const u=await requireUser();
   const d=await req.json();
-  const data:Record<string,string|null>={};
+  if(!d||typeof d!=="object"||Array.isArray(d))return NextResponse.json({error:"Body tidak valid."},{status:400});
+  const data:Prisma.UserUpdateInput={};
   if(Object.prototype.hasOwnProperty.call(d,"name")){const name=String(d.name||"").trim();if(!name||name.length>60)return NextResponse.json({error:"Username wajib dan maksimal 60 karakter."},{status:400});data.name=name;}
   if(Object.prototype.hasOwnProperty.call(d,"bio")){const bio=String(d.bio||"").trim();if(bio.length>1000)return NextResponse.json({error:"Bio maksimal 1000 karakter."},{status:400});data.bio=bio||null;}
   if(Object.prototype.hasOwnProperty.call(d,"image")){const image=String(d.image||"").trim();if(image.length>2000)return NextResponse.json({error:"URL avatar terlalu panjang."},{status:400});data.image=image||null;}
