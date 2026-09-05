@@ -18,7 +18,7 @@ function buildUpdate(input:any){
 
 export async function GET(_:Request,{params}:{params:{id:string}}){
  try{
-  const p=await prisma.project.findFirst({where:{id:params.id,status:"PUBLISHED"},select:{id:true,name:true,slug:true,description:true,category:true,tags:true,technology:true,license:true,requirements:true,installation:true,documentation:true,demoUrl:true,githubUrl:true,screenshots:true,coverUrl:true,premium:true,price:true,views:true,downloads:true,featured:true,status:true,version:true,changelog:true,ownerId:true,createdAt:true,updatedAt:true,owner:{select:{id:true,name:true,email:true,image:true,bio:true,role:true}},reviews:{select:{id:true,rating:true,body:true,helpful:true,createdAt:true,user:{select:{name:true,image:true}}},orderBy:{createdAt:"desc"}}}});
+  const p=await prisma.project.findFirst({where:{id:params.id,status:"PUBLISHED"},select:{id:true,name:true,slug:true,description:true,category:true,tags:true,technology:true,license:true,requirements:true,installation:true,documentation:true,demoUrl:true,githubUrl:true,screenshots:true,coverUrl:true,premium:true,price:true,views:true,downloads:true,featured:true,status:true,version:true,changelog:true,ownerId:true,createdAt:true,updatedAt:true,owner:{select:{id:true,name:true,image:true,bio:true}},reviews:{select:{id:true,rating:true,body:true,helpful:true,createdAt:true,user:{select:{name:true,image:true}}},orderBy:{createdAt:"desc"}}}});
   if(!p)return NextResponse.json({error:"Not found"},{status:404});
   await prisma.project.update({where:{id:p.id},data:{views:{increment:1}}});
   return NextResponse.json(p);
