@@ -1,0 +1,1 @@
+Pre-launch code audit completed. Vercel deployment logs are not independently accessible from the connected account because the Vercel scope returns HTTP 403.
