@@ -5,7 +5,7 @@ import {requireUser} from "@/lib/session";
 export async function POST(req:Request,{params}:{params:{id:string}}){
  try{
   const u=await requireUser();
-  const project=await prisma.project.findUnique({where:{id:params.id,status:"PUBLISHED"},select:{id:true,premium:true}});
+  const project=await prisma.project.findFirst({where:{id:params.id,status:"PUBLISHED"},select:{id:true,premium:true}});
   if(!project)return NextResponse.json({error:"Project tidak ditemukan."},{status:404});
   const d=await req.json();
   const body=String(d.body||"").trim();
