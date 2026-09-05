@@ -1,12 +1,72 @@
-import {NextResponse} from "next/server";
-import {prisma} from "@/lib/prisma";
-import {requireAdmin} from "@/lib/session";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/session";
 
-const envAdmins=()=>new Set((process.env.ADMIN_EMAILS||process.env.ADMIN_EMAIL||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean));
-const normalize=(value:unknown)=>String(value||"").trim().toLowerCase();
+const envAdmins = () => new Set(
+  (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean)
+);
+const normalize = (value: unknown) => String(value || "").trim().toLowerCase();
 
-export async function GET(){try{await requireAdmin();const db=await prisma.adminEmail.findMany({orderBy:{createdAt:"asc"}});const env=[...envAdmins()].map(email=>({id:`env:${email}`,email,source:"ENV"}));const stored=db.filter(x=>!envAdmins().has(x.email)).map(x=>({id:x.id,email:x.email,source:"DATABASE"}));return NextResponse.json([...env,...stored]);}catch{return NextResponse.json({error:"Admin only"},{status:403})}}
+export async function GET() {
+  try {
+    await requireAdmin();
+    const db = await prisma.adminEmail.findMany({ orderBy: { createdAt: "asc" } });
+    const envSet = envAdmins();
+    const env = Array.from(envSet).map((email) => ({ id: `env:${email}`, email, source: "ENV" }));
+    const stored = db
+      .filter((x) => !envSet.has(x.email))
+      .map((x) => ({ id: x.id, email: x.email, source: "DATABASE" }));
+    return NextResponse.json([...env, ...stored]);
+  } catch {
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  }
+}
 
-export async function POST(req:Request){try{const current=await requireAdmin();const body=await req.json();const email=normalize(body.email);if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return NextResponse.json({error:"Email admin tidak valid."},{status:400});const env=envAdmins();if(env.has(email))return NextResponse.json({error:"Email ini sudah menjadi admin dari environment variable."},{status:409});const admin=await prisma.adminEmail.upsert({where:{email},update:{},create:{email}});const user=await prisma.user.findUnique({where:{email}});if(user&&user.role!=="ADMIN")await prisma.user.update({where:{id:user.id},data:{role:"ADMIN"}});return NextResponse.json({id:admin.id,email:admin.email,source:"DATABASE",addedBy:current.email});}catch{return NextResponse.json({error:"Gagal menambahkan admin."},{status:500})}}
+export async function POST(req: Request) {
+  try {
+    const current = await requireAdmin();
+    const body = await req.json();
+    const email = normalize(body.email);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Email admin tidak valid." }, { status: 400 });
+    }
+    const env = envAdmins();
+    if (env.has(email)) {
+      return NextResponse.json({ error: "Email ini sudah menjadi admin dari environment variable." }, { status: 409 });
+    }
+    const admin = await prisma.adminEmail.upsert({ where: { email }, update: {}, create: { email } });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user && user.role !== "ADMIN") {
+      await prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+    }
+    return NextResponse.json({ id: admin.id, email: admin.email, source: "DATABASE", addedBy: current.email });
+  } catch {
+    return NextResponse.json({ error: "Gagal menambahkan admin." }, { status: 500 });
+  }
+}
 
-export async function DELETE(req:Request){try{const current=await requireAdmin();const body=await req.json();const email=normalize(body.email);if(!email)return NextResponse.json({error:"Email wajib diisi."},{status:400});if(email===normalize(current.email))return NextResponse.json({error:"Kamu tidak bisa menghapus akun admin yang sedang dipakai."},{status:400});if(envAdmins().has(email))return NextResponse.json({error:"Admin dari environment variable tidak bisa dihapus dari dashboard."},{status:400});const admin=await prisma.adminEmail.findUnique({where:{email}});if(!admin)return NextResponse.json({error:"Email admin tidak ditemukan."},{status:404});await prisma.adminEmail.delete({where:{email}});const user=await prisma.user.findUnique({where:{email}});if(user)await prisma.user.update({where:{id:user.id},data:{role:"USER"}});return NextResponse.json({ok:true});}catch{return NextResponse.json({error:"Gagal menghapus admin."},{status:500})}}
+export async function DELETE(req: Request) {
+  try {
+    const current = await requireAdmin();
+    const body = await req.json();
+    const email = normalize(body.email);
+    if (!email) return NextResponse.json({ error: "Email wajib diisi." }, { status: 400 });
+    if (email === normalize(current.email)) {
+      return NextResponse.json({ error: "Kamu tidak bisa menghapus akun admin yang sedang dipakai." }, { status: 400 });
+    }
+    if (envAdmins().has(email)) {
+      return NextResponse.json({ error: "Admin dari environment variable tidak bisa dihapus dari dashboard." }, { status: 400 });
+    }
+    const admin = await prisma.adminEmail.findUnique({ where: { email } });
+    if (!admin) return NextResponse.json({ error: "Email admin tidak ditemukan." }, { status: 404 });
+    await prisma.adminEmail.delete({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user) await prisma.user.update({ where: { id: user.id }, data: { role: "USER" } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Gagal menghapus admin." }, { status: 500 });
+  }
+}
