@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function PremiumPage(){return <div><h1>ProjectVault Premium</h1><div className="panel"><h2>Upgrade Premium</h2><p>Akses semua project berlabel PREMIUM tanpa bayar satu per satu.</p><ul><li>Download semua project PREMIUM.</li><li>Akses tanpa batas selama role PREMIUM aktif.</li><li>Aktivasi dilakukan manual oleh Admin.</li></ul><Link className="btn" href="/chat">Chat Admin untuk Upgrade</Link></div></div>}
