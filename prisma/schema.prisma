@@ -1,115 +1,216 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 model User {
- id String @id @default(cuid())
- name String? @unique
- email String? @unique
- emailVerified DateTime?
- image String? @db.Text
- bio String? @db.Text
- avatarBorder String @default("solid")
- password String?
- role String @default("USER")
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
- accounts Account[]
- sessions Session[]
- projects Project[]
- purchases Purchase[]
- wishlists Wishlist[]
- reviews Review[]
- followers Follow[] @relation("creator")
- following Follow[] @relation("follower")
- notifications Notification[]
- activity Activity[]
- chat Chat?
- messages Message[]
+  id            String         @id @default(cuid())
+  name          String?        @unique
+  email         String?        @unique
+  emailVerified DateTime?
+  image         String?        @db.Text
+  bio           String?        @db.Text
+  avatarBorder  String         @default("solid")
+  password      String?
+  role          String         @default("USER")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  projects      Project[]
+  purchases     Purchase[]
+  wishlists     Wishlist[]
+  reviews       Review[]
+  followers     Follow[]       @relation("creator")
+  following     Follow[]       @relation("follower")
+  notifications Notification[]
+  activity      Activity[]
+  chat          Chat?
+  messages      Message[]
 }
 
 model AdminEmail {
- id String @id @default(cuid())
- email String @unique
- createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }
 
 model Chat {
- id String @id @default(cuid())
- userId String @unique
- status String @default("OPEN")
- lastMessageAt DateTime @default(now())
- user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- messages Message[]
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  status        String    @default("OPEN")
+  lastMessageAt DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Message {
- id String @id @default(cuid())
- chatId String
- senderId String
- body String @db.Text
- read Boolean @default(false)
- createdAt DateTime @default(now())
- chat Chat @relation(fields:[chatId],references:[id],onDelete:Cascade)
- sender User @relation(fields:[senderId],references:[id],onDelete:Cascade)
+  id        String   @id @default(cuid())
+  chatId    String
+  senderId  String
+  body      String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 model Project {
- id String @id @default(cuid())
- name String
- slug String @unique
- description String @db.Text
- category String @default("Other")
- tags String @default("")
- technology String @default("")
- license String @default("MIT")
- requirements String @default("")
- installation String @db.Text
- documentation String? @db.Text
- demoUrl String?
- githubUrl String?
- screenshots String @db.Text
- coverUrl String?
- downloadUrl String @db.Text
- premium Boolean @default(false)
- price Int @default(0)
- views Int @default(0)
- downloads Int @default(0)
- featured Boolean @default(false)
- status String @default("PUBLISHED")
- version String @default("1.0.0")
- changelog String? @db.Text
- ownerId String
- owner User @relation(fields:[ownerId],references:[id],onDelete:Cascade)
- purchases Purchase[]
- wishlists Wishlist[]
- reviews Review[]
- createdAt DateTime @default(now())
- updatedAt DateTime @updatedAt
+  id            String      @id @default(cuid())
+  name          String
+  slug          String      @unique
+  description   String      @db.Text
+  category      String      @default("Other")
+  tags          String      @default("")
+  technology    String      @default("")
+  license      String      @default("MIT")
+  requirements  String      @default("")
+  installation  String      @db.Text
+  documentation String?     @db.Text
+  demoUrl       String?
+  githubUrl     String?
+  screenshots   String      @db.Text
+  coverUrl      String?
+  downloadUrl   String      @db.Text
+  premium       Boolean     @default(false)
+  price         Int         @default(0)
+  views         Int         @default(0)
+  downloads     Int         @default(0)
+  featured      Boolean     @default(false)
+  status        String      @default("PUBLISHED")
+  version       String      @default("1.0.0")
+  changelog     String?     @db.Text
+  ownerId       String
+  owner         User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  purchases     Purchase[]
+  wishlists     Wishlist[]
+  reviews       Review[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Purchase {
- id String @id @default(cuid())
- userId String
- projectId String
- stripeSessionId String? @unique
- stripePaymentId String?
- amount Int
- status String @default("PAID")
- createdAt DateTime @default(now())
- user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- project Project @relation(fields:[projectId],references:[id],onDelete:Cascade)
- @@unique([userId,projectId])
+  id               String   @id @default(cuid())
+  userId           String
+  projectId        String
+  stripeSessionId  String?  @unique
+  stripePaymentId  String?
+  amount           Int
+  status           String   @default("PAID")
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([userId, projectId])
 }
-model Wishlist { id String @id @default(cuid()); userId String; projectId String; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade); project Project @relation(fields:[projectId],references:[id],onDelete:Cascade); @@unique([userId,projectId]) }
-model Review { id String @id @default(cuid()); rating Int; body String @db.Text; helpful Int @default(0); userId String; projectId String; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade); project Project @relation(fields:[projectId],references:[id],onDelete:Cascade); @@unique([userId,projectId]) }
-model Follow { id String @id @default(cuid()); followerId String; creatorId String; createdAt DateTime @default(now()); follower User @relation("follower",fields:[followerId],references:[id],onDelete:Cascade); creator User @relation("creator",fields:[creatorId],references:[id],onDelete:Cascade); @@unique([followerId,creatorId]) }
-model Notification { id String @id @default(cuid()); userId String; title String; body String @db.Text; read Boolean @default(false); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade) }
-model Activity { id String @id @default(cuid()); userId String; type String; meta String @db.Text; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade) }
-model Coupon { id String @id @default(cuid()); code String @unique; type String; value Int; expiresAt DateTime?; usageLimit Int?; used Int @default(0); active Boolean @default(true); createdAt DateTime @default(now()) }
-model Report { id String @id @default(cuid()); reporterId String; targetType String; targetId String; reason String @db.Text; status String @default("OPEN"); createdAt DateTime @default(now()) }
-model Account { id String @id @default(cuid()); userId String; type String; provider String; providerAccountId String; refresh_token String? @db.Text; access_token String? @db.Text; expires_at Int?; token_type String?; scope String?; id_token String? @db.Text; session_state String?; user User @relation(fields:[userId],references:[id],onDelete:Cascade); @@unique([provider,providerAccountId]) }
-model Session { id String @id @default(cuid()); sessionToken String @unique; userId String; expires DateTime; user User @relation(fields:[userId],references:[id],onDelete:Cascade) }
-model VerificationToken { identifier String; token String @unique; expires DateTime; @@unique([identifier,token]) }
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([userId, projectId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  body      String   @db.Text
+  helpful   Int      @default(0)
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([userId, projectId])
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  creatorId  String
+  createdAt  DateTime @default(now())
+  follower   User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  creator    User     @relation("creator", fields: [creatorId], references: [id], onDelete: Cascade)
+  @@unique([followerId, creatorId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  meta      String   @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  type       String
+  value      Int
+  expiresAt  DateTime?
+  usageLimit Int?
+  used       Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  targetType String
+  targetId   String
+  reason     String   @db.Text
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now())
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
