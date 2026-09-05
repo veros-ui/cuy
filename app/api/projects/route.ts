@@ -33,8 +33,11 @@ export async function POST(req:Request){
   const downloadUrl=String(d.downloadUrl||"").trim();
   if(!name||!description||!downloadUrl)return NextResponse.json({error:"Nama, deskripsi, dan URL download wajib."},{status:400});
   if(name.length>160||description.length>20000)return NextResponse.json({error:"Data project terlalu panjang."},{status:400});
+  const premium=d.premium===true||d.premium==="true"||d.premium===1||d.premium==="1";
+  const price=Number(d.price);
+  const normalizedPrice=Number.isInteger(price)?Math.max(0,price):0;
   const slug=(name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"")||"project")+"-"+Date.now().toString(36);
-  const p=await prisma.project.create({data:{name,slug,description,category:String(d.category||"Other"),tags:String(d.tags||""),technology:String(d.technology||""),license:String(d.license||"MIT"),requirements:String(d.requirements||""),installation:String(d.installation||""),documentation:d.documentation?String(d.documentation):null,demoUrl:d.demoUrl?String(d.demoUrl):null,githubUrl:d.githubUrl?String(d.githubUrl):null,screenshots:String(d.screenshots||""),coverUrl:d.coverUrl?String(d.coverUrl):null,downloadUrl,premium:Boolean(d.premium),price:Number.isInteger(Number(d.price))?Math.max(0,Number(d.price)):0,ownerId:user.id}});
+  const p=await prisma.project.create({data:{name,slug,description,category:String(d.category||"Other"),tags:String(d.tags||""),technology:String(d.technology||""),license:String(d.license||"MIT"),requirements:String(d.requirements||""),installation:String(d.installation||""),documentation:d.documentation?String(d.documentation):null,demoUrl:d.demoUrl?String(d.demoUrl):null,githubUrl:d.githubUrl?String(d.githubUrl):null,screenshots:String(d.screenshots||""),coverUrl:d.coverUrl?String(d.coverUrl):null,downloadUrl,premium,price:normalizedPrice,ownerId:user.id}});
   return NextResponse.json(p,{status:201});
  }catch(e){return NextResponse.json({error:String(e).includes("UNAUTHORIZED")?"Login required":"Gagal membuat project."},{status:String(e).includes("UNAUTHORIZED")?401:500})}
 }
