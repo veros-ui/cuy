@@ -7,11 +7,7 @@ export async function GET(_:Request,{params}:{params:{id:string}}){
   const u=await requireUser();
   const p=await prisma.project.findUnique({where:{id:params.id}});
   if(!p)return NextResponse.json({error:"Not found"},{status:404});
-  const privileged=u.role==="ADMIN"||u.role==="PREMIUM";
-  if(p.premium&&!privileged){
-   const own=await prisma.purchase.findUnique({where:{userId_projectId:{userId:u.id,projectId:p.id}}});
-   if(!own)return NextResponse.json({error:"Purchase required or Premium membership required"},{status:402});
-  }
+  if(p.premium&&(u.role!=="PREMIUM"&&u.role!=="ADMIN"))return NextResponse.json({error:"Premium membership required. Chat Admin untuk upgrade."},{status:403});
   await prisma.project.update({where:{id:p.id},data:{downloads:{increment:1}}});
   return NextResponse.redirect(p.downloadUrl);
  }catch{return NextResponse.json({error:"Login required"},{status:401})}
