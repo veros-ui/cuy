@@ -1,13 +1,18 @@
 import {NextResponse} from "next/server";
+import {Prisma} from "@prisma/client";
 import {prisma} from "@/lib/prisma";
 import {requireUser} from "@/lib/session";
 
 const EDITABLE_FIELDS=["name","description","category","tags","technology","license","requirements","installation","documentation","demoUrl","githubUrl","screenshots","coverUrl","downloadUrl","premium","price","featured","status","version","changelog"] as const;
 const ALLOWED_STATUS=new Set(["DRAFT","PUBLISHED","ARCHIVED"]);
 
-function buildUpdate(input:Record<string,unknown>){
- const d:Record<string,unknown>={};
- for(const key of EDITABLE_FIELDS)if(Object.prototype.hasOwnProperty.call(input,key))d[key]=input[key];
+function buildUpdate(input:Record<string,unknown>):{data:Prisma.ProjectUpdateInput}|{error:string}{
+ const d:Prisma.ProjectUpdateInput={};
+ for(const key of EDITABLE_FIELDS){
+  if(Object.prototype.hasOwnProperty.call(input,key)){
+   (d as Record<string,unknown>)[key]=input[key];
+  }
+ }
  if(Object.prototype.hasOwnProperty.call(d,"name")){d.name=String(d.name||"").trim();if(!d.name)return {error:"Nama project wajib diisi."};if(String(d.name).length>160)return {error:"Nama project terlalu panjang."};}
  if(Object.prototype.hasOwnProperty.call(d,"description")){d.description=String(d.description||"").trim();if(!d.description)return {error:"Deskripsi wajib diisi."};if(String(d.description).length>20000)return {error:"Deskripsi terlalu panjang."};}
  if(Object.prototype.hasOwnProperty.call(d,"premium"))d.premium=d.premium===true||d.premium==="true"||d.premium===1||d.premium==="1";
